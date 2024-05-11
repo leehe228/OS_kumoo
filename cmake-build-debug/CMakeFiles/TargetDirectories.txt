@@ -1,0 +1,3 @@
+/Users/hoeun/Library/CloudStorage/OneDrive-개인/2024-1학기/운영체제/과제1_MMU/OS_kumoo/cmake-build-debug/CMakeFiles/OS_kumoo.dir
+/Users/hoeun/Library/CloudStorage/OneDrive-개인/2024-1학기/운영체제/과제1_MMU/OS_kumoo/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/hoeun/Library/CloudStorage/OneDrive-개인/2024-1학기/운영체제/과제1_MMU/OS_kumoo/cmake-build-debug/CMakeFiles/rebuild_cache.dir
