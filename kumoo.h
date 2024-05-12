@@ -120,7 +120,7 @@ struct queue {
 
 /** Initialize a Queue */
 void queue_init(struct queue **_queue, int max_length) {
-    *_queue = malloc(sizeof(struct queue));
+    *_queue = (struct queue*)malloc(sizeof(struct queue));
     (*_queue)->data = (unsigned short*)malloc(sizeof(unsigned short) * max_length);
     (*_queue)->front = -1;
     (*_queue)->rear = -1;
@@ -433,7 +433,7 @@ int get_pfn_sequential(int not_evict_pfn) {
         }
     }
 
-    printf("pfn found: %d, pfn_to_evict: %d\n", pfn_found, pfn_to_evict);
+    // printf("pfn found: %d, pfn_to_evict: %d\n", pfn_found, pfn_to_evict);
 
     if (pfn_found == 0) {
         return -1;
@@ -642,7 +642,7 @@ int ku_proc_init(int argc, char *argv[]) {
         char temp[256];
 
         // Create a New PCB Instance
-        struct pcb *new_pcb = malloc(sizeof(struct pcb));
+        struct pcb *new_pcb = (struct pcb*)malloc(sizeof(struct pcb));
 
         // Set PID in PCB
         new_pcb->pid = pid;
@@ -680,7 +680,7 @@ int ku_proc_init(int argc, char *argv[]) {
         }
 
         // create new free block
-        struct free_block *new_free_block = malloc(sizeof(struct free_block));
+        struct free_block *new_free_block = (struct free_block*)malloc(sizeof(struct free_block));
 
         new_free_block->pid = pid;
         new_free_block->type = FB_TYPE_PAGE_DIR; // page directory
@@ -815,13 +815,13 @@ int ku_pgfault_handler(unsigned short va) {
 
         // 3) 설정
         // pg_free_block 생성 및 설정
-        struct free_block *pg_free_block = malloc(sizeof(struct free_block));
+        struct free_block *pg_free_block = (struct free_block*)malloc(sizeof(struct free_block));
         pg_free_block->pid = current->pid;
         pg_free_block->type = FB_TYPE_PAGE;
         pg_free_block->back_pfn = new_pt_pfn;
 
         // pt_free_block 생성 및 설정
-        struct free_block *pt_free_block = malloc(sizeof(struct free_block));
+        struct free_block *pt_free_block = (struct free_block*)malloc(sizeof(struct free_block));
         pt_free_block->pid = current->pid;
         pt_free_block->type = FB_TYPE_PAGE_TBL;
         pt_free_block->back_pfn = current->pd_pfn;
@@ -939,7 +939,7 @@ int ku_pgfault_handler(unsigned short va) {
             // free_sf_list → free_pf_list로 free_block 이동
             // free_pf_list[new_pg_pfn] = free_sf_list[pg_sfn];
             // free_sf_list[pg_sfn] = NULL;
-            struct free_block *new_pg_free_block = malloc(sizeof(struct free_block));
+            struct free_block *new_pg_free_block = (struct free_block*)malloc(sizeof(struct free_block));
             new_pg_free_block->pid = current->pid;
             new_pg_free_block->type = FB_TYPE_PAGE;
             new_pg_free_block->back_pfn = pt_pfn;
@@ -988,7 +988,7 @@ int ku_pgfault_handler(unsigned short va) {
             enqueue(&pf_queue, new_pg_pfn);
 
             // free block 새로 설정
-            struct free_block *pg_free_block = malloc(sizeof(struct free_block));
+            struct free_block *pg_free_block = (struct free_block*)malloc(sizeof(struct free_block));
             pg_free_block->pid = current->pid;
             pg_free_block->type = FB_TYPE_PAGE;
             pg_free_block->back_pfn = pt_pfn;
@@ -1042,12 +1042,12 @@ int ku_pgfault_handler(unsigned short va) {
         // printf("\n");
 
         // free block 생성
-        struct free_block *pg_free_block = malloc(sizeof(struct free_block));
+        struct free_block *pg_free_block = (struct free_block*)malloc(sizeof(struct free_block));
         pg_free_block->pid = current->pid;
         pg_free_block->type = FB_TYPE_PAGE;
         pg_free_block->back_pfn = new_pt_pfn;
 
-        struct free_block *pt_free_block = malloc(sizeof(struct free_block));
+        struct free_block *pt_free_block = (struct free_block*)malloc(sizeof(struct free_block));
         pt_free_block->pid = current->pid;
         pt_free_block->type = FB_TYPE_PAGE_TBL;
         pt_free_block->back_pfn = current->pd_pfn;
