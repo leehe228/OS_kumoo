@@ -84,7 +84,8 @@ int ku_traverse(unsigned short va, int write) {
 
 void ku_os_init(void) {
     /* Initialize physical memory*/
-    pfnum = 1 << 12;
+    // pfnum = 1 << 12;
+    pfnum = 4;
     sfnum = 1 << 14;
 
     pmem = (char*)malloc(64 << 12);
@@ -111,7 +112,7 @@ int op_read(unsigned short pid) {
         return 1;
     }
 
-    printf("[CPU] <<< READ <- (%d) >>>\n", addr);
+    // printf("[CPU] <<< READ <- (%d) >>>\n", addr);
 
     va = addr & 0xFFFF;
     pa = ku_traverse(va, 0);
@@ -160,7 +161,7 @@ int op_write(unsigned short pid) {
         return 1;
     }
 
-    printf("[CPU] <<< WRITE \"%c\" -> (%d) >>>\n", input, addr);
+    // printf("[CPU] <<< WRITE \"%c\" -> (%d) >>>\n", input, addr);
 
     va = addr & 0xFFFF;
     pa = ku_traverse(va, 1);
