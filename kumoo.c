@@ -84,8 +84,8 @@ int ku_traverse(unsigned short va, int write) {
 
 void ku_os_init(void) {
     /* Initialize physical memory*/
-    // pfnum = 1 << 12;
-    pfnum = 4;
+    pfnum = 1 << 12;
+    // pfnum = 4;
     sfnum = 1 << 14;
 
     pmem = (char*)malloc(64 << 12);
