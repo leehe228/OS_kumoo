@@ -9,45 +9,20 @@
 #include <stdlib.h>
 #include <memory.h>
 
-
 // ============================================================
 #define ADDR_SIZE 16
 
-#define PD_SIZE 5 // 5-bit
-#define PT_SIZE 5 // 5-bit
-#define OFFSET_SIZE 6 // 6-bit
-
-#define ENTRY_SIZE 2 // 2B
 #define PAGE_SIZE 64 // 64B
 
 #define PCB_LIST_LENGTH 1 << 4
 #define PF_QUEUE_LENGTH 4096
 #define READY_QUEUE_LENGTH 1 << 4
 
-
-// ============================================================
-/** Bit Mask Operators */
-#define PD_MASK 0xf800 // 0b1111100000000000
-#define PD_SHIFT 11
-#define PT_MASK 0x7c0 // 0b0000011111000000
-#define PT_SHIFT 6
-#define OFFSET_MASK 0x3f // 0b0000000000111111
-
-#define PFN_MASK 0xfff0 // 0b1111111111110000
-#define PFN_SHIFT 4
-#define SWAP_MASK 0xfffc // 0b1111111111111100
-#define SWAP_SHIFT 2
-
-#define PRESENT_BIT_MASK 0x1 // 0b0000000000000001
-#define DIRTY_BIT_MASK 0x2 // 0b0000000000000010
-
-
 // ============================================================
 /** Constants for Free Block types */
 #define FB_TYPE_PAGE_DIR 1
 #define FB_TYPE_PAGE_TBL 2
 #define FB_TYPE_PAGE 3
-
 
 // ============================================================
 /** Global Variables */
@@ -69,7 +44,6 @@ struct queue *ready_queue; // Process Ready Queue
 void ku_dump_pmem(void);
 void ku_dump_swap(void);
 
-
 // ============================================================
 /** Struct of Free Block in Free List */
 struct free_block {
@@ -77,7 +51,6 @@ struct free_block {
     unsigned short pid; // Process ID
     int back_pfn; // Inverse Pointer to Page Table or Page Directory. 0 ~ positive for PFN, negative for SFN
 };
-
 
 // ===========================================================
 /** Struct PCB */
@@ -91,7 +64,6 @@ struct pcb {
     int vbase; // Virtual Address Space Base Address
     int vlength; // Virtual Address Space Length
 };
-
 
 // ============================================================
 /** Calculate Physical Memory Usage (Percent) */
@@ -136,7 +108,6 @@ double swap_usage() {
     return usage;
 }
 
-
 // ============================================================
 /** Inode Queue implemented by Array (for Page Frame List, Swap Candidates) */
 struct queue {
@@ -175,7 +146,7 @@ int queue_length(const struct queue *_queue) {
 /** Enqueue an Item to the Queue */
 void enqueue(struct queue **_queue, unsigned short item) {
     if (queue_check_full((*_queue))) {
-        printf("  [OS] INFO: Queue is Full, Cannot Enqueue.\n");
+        // printf("  [OS] INFO: Queue is Full, Cannot Enqueue.\n");
         return;
     }
 
@@ -194,7 +165,7 @@ unsigned short dequeue(struct queue **_queue) {
     unsigned short item;
 
     if (queue_check_empty((*_queue))) {
-        printf("  [OS] INFO: Queue is Empty, Cannot Dequeue.\n");
+        // printf("  [OS] INFO: Queue is Empty, Cannot Dequeue.\n");
         return -1;
     }
 
@@ -227,7 +198,6 @@ void queue_print(const struct queue *_queue) {
     printf("\n");
 }
 
-
 // ============================================================
 /** Print PCB Information */
 void print_pcb(struct pcb *_target) {
@@ -247,7 +217,6 @@ void print_pcb_list() {
     }
     printf("--------------------\n");
 }
-
 
 // ============================================================
 /** Entry Manipulation Functions */
@@ -304,15 +273,13 @@ char* get_sf_addr(const int sfn) {
     return (swaps + (sfn << 6));
 }
 
-
 // ============================================================
 /** Print Page Table or Directory Entry Bit by Bit */
 void print_entry(const unsigned short entry) {
-    for (int i = 0; i < ENTRY_SIZE * 8; i++) {
+    for (int i = 0; i < ADDR_SIZE; i++) {
         printf("%x ", ((entry << i) & 0x8000) >> 15);
     }
 }
-
 
 // ============================================================
 /** Get Next Free SF Number by Sequential Algorithm */
@@ -325,7 +292,7 @@ int get_sfn_sequential(int not_sfn) {
         }
     }
 
-    printf("[OS] FETAL ERROR: Swap Space is Full.\n");
+    // printf("[OS] FETAL ERROR: Swap Space is Full.\n");
     return -1;
 }
 
@@ -342,14 +309,14 @@ unsigned short *find_entry_by_pfn_addr(unsigned short pfn, unsigned short pfn_to
     }
 
     // cannot find
-    printf("  [OS] FETAL ERROR: Cannot Find PFN in PFN TO FIND\n");
+    // printf("  [OS] FETAL ERROR: Cannot Find PFN in PFN TO FIND\n");
     return NULL;
 }
 
 /** Get Next Free PF Number by Sequential Algorithm
  *  If there is no space in physical memory, swapping */
 int get_pfn_sequential(int not_evict_pfn) {
-    printf("===== [OS] get_pfn_sequential is called =====\n");
+    // printf("===== [OS] get_pfn_sequential is called =====\n");
     // Find Free PFN Index
     for (int pfn = 0; pfn < pfnum; pfn++) {
         if (free_pf_list[pfn] == NULL && pfn != not_evict_pfn) {
@@ -359,39 +326,39 @@ int get_pfn_sequential(int not_evict_pfn) {
     }
 
     // There is no free PFN, Swapping is needed
-    printf("[OS] INFO: No Free PFN Found, Swapping.\n");
-    pmem_usage();
+    // printf("[OS] INFO: No Free PFN Found, Swapping.\n");
+    // pmem_usage();
 
     int pfn_to_evict;
     int pt_flag;
     int pte_all_invalid;
     int pte_all_swap_out;
+    int pfn_found = 0;
 
     // Find pfn to evict
-    do {
+    if (queue_check_empty(pf_queue)) {
+        // pf queue is empty
+        return -1;
+    }
+
+    for (int j = 0; j < pf_queue->length; j++) {
         pfn_to_evict = dequeue(&pf_queue);
-        printf("  [OS] PFN to Evict Candidate is (%d) selected by FIFO.\n", pfn_to_evict);
 
         if (pfn_to_evict == not_evict_pfn) {
-            printf("  [OS] PFN to Evict (%d) is same as not_evict_pfn (%d), cannot be evicted.\n", pfn_to_evict, not_evict_pfn);
+            enqueue(&pf_queue, pfn_to_evict);
+            continue;
+        }
+
+        if (free_pf_list[pfn_to_evict] == NULL) {
+            enqueue(&pf_queue, pfn_to_evict);
             continue;
         }
 
         pte_all_invalid = 0;
         pte_all_swap_out = 0;
 
-        // check the found pfn can be evicted
-        // Page Table의 경우 모든 entry가 invalid or swapped-out인 경우 가능
-        // Page의 경우 가능
-
-        if (free_pf_list[pfn_to_evict] == NULL) {
-            printf("  [OS] INFO: pfn_to_evict(%d) is Invalid (NULL), retry.\n", pfn_to_evict);
-            return -1;
-        }
-
-        // Page Table인 경우
         if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE_TBL) {
-            printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, check can be evicted.\n", pfn_to_evict);
+            // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, check can be evicted.\n", pfn_to_evict);
 
             // check all page table entry is invalid or swapped-out
             unsigned short *pfn_to_evict_addr = (unsigned short*)(pmem + (pfn_to_evict << 6));
@@ -400,11 +367,11 @@ int get_pfn_sequential(int not_evict_pfn) {
             pt_flag = 0;
 
             // All Page Table Entry is Invalid
-            for (int i = 0; i < (1 << PT_SIZE); i++) {
+            for (int i = 0; i < (1 << 5); i++) {
                 unsigned short *entry = pfn_to_evict_addr + i;
                 if (check_entry_valid(*entry)) {
                     pt_flag = 1;
-                    printf("  [OS] INFO: pfn_to_evict(%d) has one or more validate entry, cannot be evicted.\n", pfn_to_evict);
+                    // printf("  [OS] INFO: pfn_to_evict(%d) has one or more validate entry, cannot be evicted.\n", pfn_to_evict);
                     break;
                 }
             }
@@ -418,11 +385,11 @@ int get_pfn_sequential(int not_evict_pfn) {
 
             // All Page Table Entry is Swapped-Out
             if (pte_all_invalid == 0) {
-                for (int i = 0; i < (1 << PT_SIZE); i++) {
+                for (int i = 0; i < (1 << 5); i++) {
                     unsigned short *entry = pfn_to_evict_addr + i;
                     if (!check_entry_swapped(*entry)) {
                         pt_flag = 1;
-                        printf("  [OS] INFO: pfn_to_evict(%d) has one or more presenting entry, cannot be evicted.\n", pfn_to_evict);
+                        // printf("  [OS] INFO: pfn_to_evict(%d) has one or more presenting entry, cannot be evicted.\n", pfn_to_evict);
                         break;
                     }
                 }
@@ -433,32 +400,135 @@ int get_pfn_sequential(int not_evict_pfn) {
                 }
             }
 
-            printf("  pte_all_invalid: (%d) / pte_all_swap_out: (%d)\n", pte_all_invalid, pte_all_swap_out);
+            // printf("  pte_all_invalid: (%d) / pte_all_swap_out: (%d)\n", pte_all_invalid, pte_all_swap_out);
 
             // cannot be evicted
             if (pte_all_invalid == 0 && pte_all_swap_out == 0) {
-                printf("  [OS] INFO: This PFN cannot be evicted, try another new PFN.\n  ------\n");
+                // printf("  [OS] INFO: This Page Table PFN cannot be evicted, try another new PFN.\n  ------\n");
+                enqueue(&pf_queue, pfn_to_evict);
                 continue;
             }
-                // pt_flag == 0 (can be evicted)
+            // pt_flag == 0 (can be evicted)
             else {
-                printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, can be evicted.\n", pfn_to_evict);
+                // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, but can be evicted.\n", pfn_to_evict);
+                pfn_found = 1;
                 break;
             }
         }
-            // Page Frame
+        // Page Frame
         else if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE) {
-            printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Frame, can be evicted.\n", pfn_to_evict);
+            // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Frame, can be evicted.\n", pfn_to_evict);
+            pfn_found = 1;
             break;
         }
-            // Page Directory (Exception)
+        // Page Directory (Exception)
         else {
             // Cannot be reached
-            printf("  [OS] ERROR: pfn_to_evict is Page Directory.\n");
-            printf("===== [OS] get_pfn_sequential is returned (-1) =====\n");
+            // printf("  [OS] ERROR: pfn_to_evict is Page Directory.\n");
+            // printf("===== [OS] get_pfn_sequential is returned (-1) =====\n");
+            // enqueue(&pf_queue, pfn_to_evict);
+            continue;
+        }
+    }
+
+    printf("pfn found: %d, pfn_to_evict: %d\n", pfn_found, pfn_to_evict);
+
+    if (pfn_found == 0) {
+        return -1;
+    }
+
+    /* do {
+        pfn_to_evict = dequeue(&pf_queue);
+        // printf("  [OS] PFN to Evict Candidate is (%d) selected by FIFO.\n", pfn_to_evict);
+
+        if (pfn_to_evict == not_evict_pfn) {
+            // printf("  [OS] PFN to Evict (%d) is same as not_evict_pfn (%d), cannot be evicted.\n", pfn_to_evict, not_evict_pfn);
+            continue;
+        }
+
+        pte_all_invalid = 0;
+        pte_all_swap_out = 0;
+
+        // check the found pfn can be evicted
+        // Page Table의 경우 모든 entry가 invalid or swapped-out인 경우 가능
+        // Page의 경우 가능
+
+        if (free_pf_list[pfn_to_evict] == NULL) {
+            // printf("  [OS] INFO: pfn_to_evict(%d) is Invalid (NULL), retry.\n", pfn_to_evict);
+            return -1;
+        }
+
+        // Page Table인 경우
+        if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE_TBL) {
+            // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, check can be evicted.\n", pfn_to_evict);
+
+            // check all page table entry is invalid or swapped-out
+            unsigned short *pfn_to_evict_addr = (unsigned short*)(pmem + (pfn_to_evict << 6));
+
+            // reset flag
+            pt_flag = 0;
+
+            // All Page Table Entry is Invalid
+            for (int i = 0; i < (1 << 5); i++) {
+                unsigned short *entry = pfn_to_evict_addr + i;
+                if (check_entry_valid(*entry)) {
+                    pt_flag = 1;
+                    // printf("  [OS] INFO: pfn_to_evict(%d) has one or more validate entry, cannot be evicted.\n", pfn_to_evict);
+                    break;
+                }
+            }
+            // all pte is invalid
+            if (pt_flag == 0) {
+                pte_all_invalid = 1;
+            }
+
+            // reset flag
+            pt_flag = 0;
+
+            // All Page Table Entry is Swapped-Out
+            if (pte_all_invalid == 0) {
+                for (int i = 0; i < (1 << 5); i++) {
+                    unsigned short *entry = pfn_to_evict_addr + i;
+                    if (!check_entry_swapped(*entry)) {
+                        pt_flag = 1;
+                        // printf("  [OS] INFO: pfn_to_evict(%d) has one or more presenting entry, cannot be evicted.\n", pfn_to_evict);
+                        break;
+                    }
+                }
+
+                // all pte is present
+                if (pt_flag == 0) {
+                    pte_all_swap_out = 1;
+                }
+            }
+
+            // printf("  pte_all_invalid: (%d) / pte_all_swap_out: (%d)\n", pte_all_invalid, pte_all_swap_out);
+
+            // cannot be evicted
+            if (pte_all_invalid == 0 && pte_all_swap_out == 0) {
+                // printf("  [OS] INFO: This Page Table PFN cannot be evicted, try another new PFN.\n  ------\n");
+                continue;
+            }
+            // pt_flag == 0 (can be evicted)
+            else {
+                // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, but can be evicted.\n", pfn_to_evict);
+                break;
+            }
+        }
+        // Page Frame
+        else if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE) {
+            // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Frame, can be evicted.\n", pfn_to_evict);
+            break;
+        }
+        // Page Directory (Exception)
+        else {
+            // Cannot be reached
+            // printf("  [OS] ERROR: pfn_to_evict is Page Directory.\n");
+            // printf("===== [OS] get_pfn_sequential is returned (-1) =====\n");
             return -1;
         }
     } while (1);
+     */
 
     // pfn_to_evict is found
 
@@ -473,7 +543,7 @@ int get_pfn_sequential(int not_evict_pfn) {
         // Page Directory에서 pfn_to_evict를 가르키는 PD Entry 주소 검색
         unsigned short *pd_entry = find_entry_by_pfn_addr(pd_pfn, pfn_to_evict);
         if (pd_entry == NULL) {
-            printf("  [OS] ERROR: Inverse Pointing Page Directory is NULL (sfn: %hu).\n", pd_pfn);
+            // printf("  [OS] ERROR: Inverse Pointing Page Directory is NULL (sfn: %hu).\n", pd_pfn);
             return -1;
         }
 
@@ -493,7 +563,7 @@ int get_pfn_sequential(int not_evict_pfn) {
             free_pf_list[pfn_to_evict] = NULL;
         }
 
-            // A-2) 이 Page Table이 가르키는 Page들의 free_block을 수정
+        // A-2) 이 Page Table이 가르키는 Page들의 free_block을 수정
         else if (pte_all_swap_out == 1) {
             // free sf list 순차 검색해서 inverse pointer가 이 pfn_to_evict인 페이지를 검색
             for (int i = 0; i < sfnum; i++) {
@@ -506,14 +576,14 @@ int get_pfn_sequential(int not_evict_pfn) {
             // 검사
             for (int i = 0; i < pfnum; i++) {
                 if (free_pf_list[i] != NULL && free_pf_list[i]->back_pfn == pfn_to_evict) {
-                    printf("  [OS] FETAL ERROR: This Page Table cannot be evicted, some Entry(offset: %d) is Present.\n", i);
+                    // printf("  [OS] FETAL ERROR: This Page Table cannot be evicted, some Entry(offset: %d) is Present.\n", i);
                     return -1;
                 }
             }
 
             // Page Directory 수정
             // int lsb = 0b0010; // dirty 1, present 0
-            unsigned short new_pd_entry = sfn << SWAP_SHIFT | 0x2;
+            unsigned short new_pd_entry = sfn << 2 | 0x2;
             (*pd_entry) = new_pd_entry;
 
             // Page를 PMEM -> SWAPS 복사, 해당 Page를 0으로 초기화
@@ -526,7 +596,7 @@ int get_pfn_sequential(int not_evict_pfn) {
         }
     }
 
-        // B. Page Frame
+    // B. Page Frame
     else if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE) {
         // Find Page Table
         unsigned short pt_pfn = free_pf_list[pfn_to_evict]->back_pfn;
@@ -534,7 +604,7 @@ int get_pfn_sequential(int not_evict_pfn) {
         // Page Table 에서 pfn_to_evict를 가르키는 Page Entry 주소 검색
         unsigned short *pt_entry = find_entry_by_pfn_addr(pt_pfn, pfn_to_evict);
         if (pt_entry == NULL) {
-            printf("  [OS] ERROR: Inverse Pointing Page Table is NULL (sfn: %hu).\n", pt_pfn);
+            // printf("  [OS] ERROR: Inverse Pointing Page Table is NULL (sfn: %hu).\n", pt_pfn);
             return -1;
         }
 
@@ -554,16 +624,16 @@ int get_pfn_sequential(int not_evict_pfn) {
             free_pf_list[pfn_to_evict] = NULL;
         }
 
-            // B-2) 해당 Page를 가르키는 PT Entry가 dirty라면 → Swap Out
+        // B-2) 해당 Page를 가르키는 PT Entry가 dirty라면 → Swap Out
         else {
             // Page Table Entry 수정
             // int lsb = 0b0010; // dirty 1, present 0
-            unsigned short new_pt_entry = sfn << SWAP_SHIFT | 0x2;
+            unsigned short new_pt_entry = sfn << 2 | 0x2;
             (*pt_entry) = new_pt_entry;
 
-            printf("  *** PT Entry: \n");
-            print_entry(new_pt_entry);
-            printf("\n");
+            // printf("  *** PT Entry: \n");
+            // print_entry(new_pt_entry);
+            // printf("\n");
 
             // Page를 PMEM -> SWAPS 복사, 해당 Page를 0으로 초기화
             memcpy(get_pf_addr(pfn_to_evict), get_sf_addr(sfn), (size_t)PAGE_SIZE);
@@ -577,19 +647,19 @@ int get_pfn_sequential(int not_evict_pfn) {
         // Page Directory (Exception)
     else {
         // Cannot be reached
-        printf("  [OS] ERROR: pfn_to_evict is Page Directory.\n");
-        printf("===== [OS] get_pfn_sequential is returned (-1) =====\n");
+        // printf("  [OS] ERROR: pfn_to_evict is Page Directory.\n");
+        // printf("===== [OS] get_pfn_sequential is returned (-1) =====\n");
         return -1;
     }
 
-    printf("===== [OS] get_pfn_sequential is returned (%d) =====\n", pfn_to_evict);
+    // printf("===== [OS] get_pfn_sequential is returned (%d) =====\n", pfn_to_evict);
     return pfn_to_evict;
 }
 
 /** Return a used PFN (free back) */
 int return_pfn(unsigned short pfn) {
     if (free_pf_list[pfn] == NULL) {
-        printf("  [OS] ERROR: Segmentation Fault - Try to Free Unallocated Physical Memory (%hu).\n", pfn);
+        // printf("  [OS] ERROR: Segmentation Fault - Try to Free Unallocated Physical Memory (%hu).\n", pfn);
         return 1;
     }
 
@@ -597,14 +667,14 @@ int return_pfn(unsigned short pfn) {
     free(free_pf_list[pfn]);
     free_pf_list[pfn] = NULL;
 
-    printf("  [OS]: Page Frame (%hu) and a Free Block are Unallocated Successfully.\n", pfn);
+    // printf("  [OS]: Page Frame (%hu) and a Free Block are Unallocated Successfully.\n", pfn);
     return 0;
 }
 
 /** Return a used SFN (free back) */
 int return_sfn(unsigned short sfn) {
     if (free_sf_list[sfn] == NULL) {
-        printf("  [OS] ERROR: Segmentation Fault - Try to Free Unallocated Swap Space Page (%hu).\n", sfn);
+        // printf("  [OS] ERROR: Segmentation Fault - Try to Free Unallocated Swap Space Page (%hu).\n", sfn);
         return 1;
     }
 
@@ -612,7 +682,7 @@ int return_sfn(unsigned short sfn) {
     free(free_sf_list[sfn]);
     free_sf_list[sfn] = NULL;
 
-    printf("  [OS]: Swap Space Frame (%hu) and a Free Block are Unallocated Successfully.\n", sfn);
+    // printf("  [OS]: Swap Space Frame (%hu) and a Free Block are Unallocated Successfully.\n", sfn);
     return 0;
 };
 
@@ -693,7 +763,12 @@ int ku_proc_init(int argc, char *argv[]) {
         new_pcb->vlength = vlength;
 
         // Initialize Page Directory for a Process
-        unsigned short pfn = get_pfn_sequential(-1);
+        int pfn = get_pfn_sequential(-1);
+
+        if (pfn < 0) {
+            // no free pfn
+            return 1;
+        }
 
         // create new free block
         struct free_block *new_free_block = malloc(sizeof(struct free_block));
@@ -754,7 +829,7 @@ int ku_scheduler(unsigned short pid) {
     // Selects the next process in a round-robin manner (starts from PID 0)
     unsigned short next_pid = dequeue(&ready_queue);
 
-    printf("*** [OS] Scheduler (pid: %hu) -> (next pid: %hu)\n", pid, next_pid);
+    // printf("*** [OS] Scheduler (pid: %hu) -> (next pid: %hu)\n", pid, next_pid);
 
     // set running process
     current = pcb_list[next_pid];
@@ -789,29 +864,25 @@ int ku_scheduler(unsigned short pid) {
 // ============================================================
 /** Page Fault Handler */
 int ku_pgfault_handler(unsigned short va) {
-    printf("\n===== [OS] ku_pgfault_handler called (va: %hu) =====\n", va);
+    // printf("\n===== [OS] ku_pgfault_handler called (va: %hu) =====\n", va);
 
     // 1. virtual address 검사
     if (va < current->vbase || va >= (current->vbase + current->vlength)) {
-        printf("  [OS] ERROR: Segmentation Fault, Prohibited Memory Access to (%d) out of address space (%d ~ %d)\n", va, current->vbase, current->vbase + current->vlength - 1);
-        printf("===== [OS] ku_pgfault_handler returned (1) =====\n\n");
+        // printf("  [OS] ERROR: Segmentation Fault, Prohibited Memory Access to (%d) out of address space (%d ~ %d)\n", va, current->vbase, current->vbase + current->vlength - 1);
+        // printf("===== [OS] ku_pgfault_handler returned (1) =====\n\n");
         return 1;
     }
 
     // 2. get page directory index, page table index
-//    int pde_idx = (va & PD_MASK) >> PD_SHIFT;
-//    int pte_idx = (va & PT_MASK) >> PT_SHIFT;
     int pde_idx = (va & 0xFFC0) >> 11;
     int pte_idx = (va & 0x07C0) >> 6;
 
     unsigned short *pd_entry = pdbr + pde_idx;
 
-    // 3.
-
     // 3-A. Page Directory Entry -> Page Table 이 Swap Out
     if (check_entry_swapped(*pd_entry)) {
         // Page Table이 Swap Out 되었다는 것은 가르키는 모든 Page가 swap out 상태이거나 invalid
-        printf("  Case A. Page Directory Entry (Page Table) is Swapped Out.\n");
+        // printf("  Case A. Page Directory Entry (Page Table) is Swapped Out.\n");
 
         int pt_sfn = (*pd_entry & 0xfffc) >> 2;
 
@@ -825,6 +896,13 @@ int ku_pgfault_handler(unsigned short va) {
 
         // 2) PD Entry → PT를 Swap In할 곳 pt_pfn
         int new_pt_pfn = get_pfn_sequential(-1);
+
+        if (new_pg_pfn < 0 || new_pt_pfn < 0) {
+            // no free pfn
+            return 1;
+        }
+
+        // printf("new_pg_pfn: %d, new_pt_pfn: %d\n", new_pg_pfn, new_pt_pfn);
 
         // 3) 설정
         // pg_free_block 생성 및 설정
@@ -849,6 +927,16 @@ int ku_pgfault_handler(unsigned short va) {
         memcpy(ptbr, (swaps + (pt_sfn << 6)), (size_t)PAGE_SIZE);
         return_sfn(pt_sfn);
 
+        // test log
+        unsigned short *pt_entry1 = ptbr + 0;
+        unsigned short *pt_entry3 = ptbr + 1;
+        // printf("PT Entry1:\n");
+        // print_entry(*pt_entry1);
+        // printf("\n PT Entry3:\n");
+        // print_entry(*pt_entry3);
+        // printf("\n");
+
+        // sf free block 제거
         free(free_sf_list[pt_sfn]);
         free_sf_list[pt_sfn] = NULL;
 
@@ -860,19 +948,21 @@ int ku_pgfault_handler(unsigned short va) {
 
         // A-① PT Entry가 swap out하다면
         if (check_entry_swapped(*pt_entry)) {
+            // printf("A-① PT Entry가 swap out하다면\n");
             new_pd_entry = new_pt_pfn << 4 | 0x3; // dirty 1, present 1
             new_pt_entry = new_pg_pfn << 4 | 0x3; // dirty 1, present 1
         }
 
-            // A-② PT Entry invalid
+        // A-② PT Entry invalid
         else if (check_entry_invalid(*pt_entry)) {
+            // printf("A-② PT Entry invalid\n");
             new_pd_entry = new_pt_pfn << 4 | 0x3; // dirty 1, present 1
             new_pt_entry = new_pg_pfn << 4 | 0x1; // dirty 0, present 1
         }
 
         else {
             // Cannot be reached
-            printf("  [OS] ERROR: PT Entry is ether not valid and present.\n");
+            // printf("  [OS] ERROR: PT Entry is ether not valid and present.\n");
             return 1;
         }
 
@@ -889,31 +979,31 @@ int ku_pgfault_handler(unsigned short va) {
 
             free(free_sf_list[pg_sfn]);
             free_sf_list[pg_sfn] = NULL;
+            // printf("  Page SFN (%d) copyed to PMEM (%d)\n", pg_sfn, new_pg_pfn);
         }
 
-
-            // A-② PT Entry invalid
+        // A-② PT Entry invalid
         else if (check_entry_invalid(*pt_entry)) {
-            // nothing to do
+            // 페이지 초기화
+            memset((pmem + (new_pg_pfn << 6)), 0, (size_t)PAGE_SIZE);
         }
 
         // PT Entry -> PT 삽입
         *pt_entry = new_pt_entry;
 
         // pf queue에 pfn 삽입
-        enqueue(&pf_queue, new_pg_pfn);
         enqueue(&pf_queue, new_pt_pfn);
+        enqueue(&pf_queue, new_pg_pfn);
     }
 
-        // 3-B. Page Directory Entry → Page Table이 Valid 한 경우
+    // 3-B. Page Directory Entry → Page Table이 Valid 한 경우
     else if (check_entry_valid(*pd_entry)) {
-        printf("  Case 3-B. Page Directory Entry -> Page Table is Valid.\n");
+        // printf("  Case 3-B. Page Directory Entry -> Page Table is Valid.\n");
 
-//        printf("  PD Entry:\n");
-//        print_entry(*pd_entry);
-//        printf("\n");
+        // printf("  PD Entry:\n");
+        // print_entry(*pd_entry);
+        // printf("\n");
 
-//        unsigned short pt_pfn = *pd_entry & PFN_MASK >> PFN_SHIFT;
         int pt_pfn = (*pd_entry & 0xFFF0) >> 4;
         unsigned short *ptbr = (unsigned short*)(pmem + (pt_pfn << 6));
         unsigned short *pt_entry = ptbr + pte_idx;
@@ -922,7 +1012,7 @@ int ku_pgfault_handler(unsigned short va) {
 
         // 3-B-1) PT Entry -> Page 가 Swap Out된 경우
         if (check_entry_swapped(*pt_entry)) {
-            printf("    Case 3-B-1) PT Entry -> Page is Swapped Out.\n");
+            // printf("    Case 3-B-1) PT Entry -> Page is Swapped Out.\n");
             // 페이지를 Swap in하고 PT Entry 수정
 
             // PT Entry에서 sfn을 가져옴
@@ -932,9 +1022,20 @@ int ku_pgfault_handler(unsigned short va) {
             // *pfn을 가져올 때 Page Table이 Swap Out 될 수 있음 (모든 entry swap out) → 방지 필요!!
             int new_pg_pfn = get_pfn_sequential(pt_pfn);
 
+            if (new_pg_pfn < 0) {
+                // no free pfn
+                return 1;
+            }
+
             // free_sf_list → free_pf_list로 free_block 이동
-            free_pf_list[new_pg_pfn] = free_sf_list[pg_sfn];
-            free_sf_list[pg_sfn] = NULL;
+            // free_pf_list[new_pg_pfn] = free_sf_list[pg_sfn];
+            // free_sf_list[pg_sfn] = NULL;
+            struct free_block *new_pg_free_block = malloc(sizeof(struct free_block));
+            new_pg_free_block->pid = current->pid;
+            new_pg_free_block->type = FB_TYPE_PAGE;
+            new_pg_free_block->back_pfn = pt_pfn;
+
+            free_pf_list[new_pg_pfn] = new_pg_free_block;
 
             // PT Entry를 (pg_pfn << PFN_SHIFT | lsb)로 수정
             unsigned short new_pt_entry = new_pg_pfn << 4 | 0x3; // dirty 1, present 1
@@ -950,9 +1051,9 @@ int ku_pgfault_handler(unsigned short va) {
             enqueue(&pf_queue, new_pg_pfn);
         }
 
-            // 3-B-2) PT Entry가 Invalidate (Page가 Mapping X)
+        // 3-B-2) PT Entry가 Invalidate (Page가 Mapping X)
         else if (check_entry_invalid(*pt_entry)) {
-            printf("    Case 3-B-2) PT Entry -> Page is Invalid.\n");
+            // printf("    Case 3-B-2) PT Entry -> Page is Invalid.\n");
 
             // page 새로 할당
             int new_pg_pfn = get_pfn_sequential(pt_pfn);
@@ -967,9 +1068,9 @@ int ku_pgfault_handler(unsigned short va) {
             // PT Entry 삽입
             *pt_entry = new_pt_entry_value;
 
-//            printf("  PT Entry (%p):\n", pt_entry);
-//            print_entry(*pt_entry);
-//            printf("\n");
+            // printf("  PT Entry (%p):\n", pt_entry);
+            // print_entry(*pt_entry);
+            // printf("\n");
 
             // new_pg_pfn 페이지 초기화
             memset(pgbr, 0, (size_t)PAGE_SIZE);
@@ -988,17 +1089,27 @@ int ku_pgfault_handler(unsigned short va) {
         }
     }
 
-        // 3-C. Page Directory Entry 가 Invalidate (Page Table Mapping X)
+    // 3-C. Page Directory Entry 가 Invalidate (Page Table Mapping X)
     else if (check_entry_invalid(*pd_entry)) {
-        printf("  Case 3-C. Page Directory Entry -> Page Table is Invalid (not Mapped yet).\n");
+        // printf("  Case 3-C. Page Directory Entry -> Page Table is Invalid (not Mapped yet).\n");
 
         // Page Table 할당
-        unsigned short new_pt_pfn = get_pfn_sequential(-1);
+        int new_pt_pfn = get_pfn_sequential(-1);
+        if (new_pt_pfn < 0) {
+            // no free pfn
+            return 1;
+        }
+
         unsigned short *ptbr = (unsigned short*)(pmem + (new_pt_pfn << 6));
         memset(ptbr, 0, (size_t)PAGE_SIZE);
 
         // Page 할당
-        unsigned short new_pg_pfn = get_pfn_sequential(new_pt_pfn);
+        int new_pg_pfn = get_pfn_sequential(new_pt_pfn);
+        if (new_pg_pfn < 0) {
+            // no free pfn
+            return 1;
+        }
+
         unsigned short *pgbr = (unsigned short*)(pmem + (new_pt_pfn << 6));
         memset(pgbr, 0, (size_t)PAGE_SIZE);
 
@@ -1015,11 +1126,11 @@ int ku_pgfault_handler(unsigned short va) {
         unsigned short pd_entry_value = new_pt_pfn << 4 | 0x3;
         *pd_entry = pd_entry_value;
 
-//        printf("  PT Entry:\n");
-//        print_entry(*pt_entry);
-//        printf("\n  PD Entry:\n");
-//        print_entry(*pd_entry);
-//        printf("\n");
+        // printf("  PT Entry:\n");
+        // print_entry(*pt_entry);
+        // printf("\n  PD Entry:\n");
+        // print_entry(*pd_entry);
+        // printf("\n");
 
         // free block 생성
         struct free_block *pg_free_block = malloc(sizeof(struct free_block));
@@ -1036,14 +1147,14 @@ int ku_pgfault_handler(unsigned short va) {
         free_pf_list[new_pt_pfn] = pt_free_block;
 
         // pt_pfn, pg_pfn pf_queue에 enqueue
-        enqueue(&pf_queue, new_pg_pfn);
         enqueue(&pf_queue, new_pt_pfn);
+        enqueue(&pf_queue, new_pg_pfn);
     }
 
-    pmem_usage();
-    swap_usage();
+    // pmem_usage();
+    // swap_usage();
 
-    printf("===== [OS] ku_pgfault_handler returned (0) =====\n\n");
+    // printf("===== [OS] ku_pgfault_handler returned (0) =====\n\n");
     return 0;
 }
 
@@ -1051,16 +1162,16 @@ int ku_pgfault_handler(unsigned short va) {
 // ============================================================
 /** Terminate a Process and Reaps Page Frame and Swap Frames mapped */
 int ku_proc_exit(unsigned short pid) {
-    printf("\n===== [OS]: Process Termination Function Called (pid: %hu) =====\n", pid);
+    // printf("\n===== [OS]: Process Termination Function Called (pid: %hu) =====\n", pid);
 
     // PCB to terminate
     struct pcb *target = pcb_list[pid];
 
     if (target == NULL) {
-        printf("  [OS] ERROR: Cannot Find PCB which has PID (%hu)\n\n", pid);
+        // printf("  [OS] ERROR: Cannot Find PCB which has PID (%hu)\n\n", pid);
         return 1;
     } else {
-        printf("  [OS] Process (pid: %hu) Found.\n", pid);
+        // printf("  [OS] Process (pid: %hu) Found.\n", pid);
     }
 
     pcb_list[pid] = NULL;
@@ -1092,10 +1203,10 @@ int ku_proc_exit(unsigned short pid) {
     // free pcb
     free(target);
 
-    print_pcb_list();
-    pmem_usage();
-    swap_usage();
+    // print_pcb_list();
+    // pmem_usage();
+    // swap_usage();
 
-    printf("===== [OS] Process (pid: %d) Termination Finished Successfully (0) =====\n\n", pid);
+    // printf("===== [OS] Process (pid: %d) Termination Finished Successfully (0) =====\n\n", pid);
     return 0;
 }
