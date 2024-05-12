@@ -296,7 +296,7 @@ int get_sfn_sequential(int not_sfn) {
     return -1;
 }
 
-unsigned short *find_entry_by_pfn_addr(unsigned short pfn, unsigned short pfn_to_find) {
+unsigned short *find_entry_by_pfn(unsigned short pfn, unsigned short pfn_to_find) {
     unsigned short *pgbr = (unsigned short*)(pmem + (pfn << 6));
 
     for (int i = 0; i < (1 << 5); i++) {
@@ -387,7 +387,9 @@ int get_pfn_sequential(int not_evict_pfn) {
             if (pte_all_invalid == 0) {
                 for (int i = 0; i < (1 << 5); i++) {
                     unsigned short *entry = pfn_to_evict_addr + i;
-                    if (!check_entry_swapped(*entry)) {
+                    // 해당 페이지가 valid 한데, swapped-out 상태인지 검사
+                    // 즉 present한 entry가 하나라도 있다면 evict가 불가능
+                    if (check_entry_present(*entry)) {
                         pt_flag = 1;
                         // printf("  [OS] INFO: pfn_to_evict(%d) has one or more presenting entry, cannot be evicted.\n", pfn_to_evict);
                         break;
@@ -437,99 +439,6 @@ int get_pfn_sequential(int not_evict_pfn) {
         return -1;
     }
 
-    /* do {
-        pfn_to_evict = dequeue(&pf_queue);
-        // printf("  [OS] PFN to Evict Candidate is (%d) selected by FIFO.\n", pfn_to_evict);
-
-        if (pfn_to_evict == not_evict_pfn) {
-            // printf("  [OS] PFN to Evict (%d) is same as not_evict_pfn (%d), cannot be evicted.\n", pfn_to_evict, not_evict_pfn);
-            continue;
-        }
-
-        pte_all_invalid = 0;
-        pte_all_swap_out = 0;
-
-        // check the found pfn can be evicted
-        // Page Table의 경우 모든 entry가 invalid or swapped-out인 경우 가능
-        // Page의 경우 가능
-
-        if (free_pf_list[pfn_to_evict] == NULL) {
-            // printf("  [OS] INFO: pfn_to_evict(%d) is Invalid (NULL), retry.\n", pfn_to_evict);
-            return -1;
-        }
-
-        // Page Table인 경우
-        if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE_TBL) {
-            // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, check can be evicted.\n", pfn_to_evict);
-
-            // check all page table entry is invalid or swapped-out
-            unsigned short *pfn_to_evict_addr = (unsigned short*)(pmem + (pfn_to_evict << 6));
-
-            // reset flag
-            pt_flag = 0;
-
-            // All Page Table Entry is Invalid
-            for (int i = 0; i < (1 << 5); i++) {
-                unsigned short *entry = pfn_to_evict_addr + i;
-                if (check_entry_valid(*entry)) {
-                    pt_flag = 1;
-                    // printf("  [OS] INFO: pfn_to_evict(%d) has one or more validate entry, cannot be evicted.\n", pfn_to_evict);
-                    break;
-                }
-            }
-            // all pte is invalid
-            if (pt_flag == 0) {
-                pte_all_invalid = 1;
-            }
-
-            // reset flag
-            pt_flag = 0;
-
-            // All Page Table Entry is Swapped-Out
-            if (pte_all_invalid == 0) {
-                for (int i = 0; i < (1 << 5); i++) {
-                    unsigned short *entry = pfn_to_evict_addr + i;
-                    if (!check_entry_swapped(*entry)) {
-                        pt_flag = 1;
-                        // printf("  [OS] INFO: pfn_to_evict(%d) has one or more presenting entry, cannot be evicted.\n", pfn_to_evict);
-                        break;
-                    }
-                }
-
-                // all pte is present
-                if (pt_flag == 0) {
-                    pte_all_swap_out = 1;
-                }
-            }
-
-            // printf("  pte_all_invalid: (%d) / pte_all_swap_out: (%d)\n", pte_all_invalid, pte_all_swap_out);
-
-            // cannot be evicted
-            if (pte_all_invalid == 0 && pte_all_swap_out == 0) {
-                // printf("  [OS] INFO: This Page Table PFN cannot be evicted, try another new PFN.\n  ------\n");
-                continue;
-            }
-            // pt_flag == 0 (can be evicted)
-            else {
-                // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Table, but can be evicted.\n", pfn_to_evict);
-                break;
-            }
-        }
-        // Page Frame
-        else if (free_pf_list[pfn_to_evict]->type == FB_TYPE_PAGE) {
-            // printf("  [OS] INFO: pfn_to_evict(%d) Page is Page Frame, can be evicted.\n", pfn_to_evict);
-            break;
-        }
-        // Page Directory (Exception)
-        else {
-            // Cannot be reached
-            // printf("  [OS] ERROR: pfn_to_evict is Page Directory.\n");
-            // printf("===== [OS] get_pfn_sequential is returned (-1) =====\n");
-            return -1;
-        }
-    } while (1);
-     */
-
     // pfn_to_evict is found
 
     // sfn to swap out
@@ -541,7 +450,7 @@ int get_pfn_sequential(int not_evict_pfn) {
         unsigned short pd_pfn = free_pf_list[pfn_to_evict]->back_pfn;
 
         // Page Directory에서 pfn_to_evict를 가르키는 PD Entry 주소 검색
-        unsigned short *pd_entry = find_entry_by_pfn_addr(pd_pfn, pfn_to_evict);
+        unsigned short *pd_entry = find_entry_by_pfn(pd_pfn, pfn_to_evict);
         if (pd_entry == NULL) {
             // printf("  [OS] ERROR: Inverse Pointing Page Directory is NULL (sfn: %hu).\n", pd_pfn);
             return -1;
@@ -573,7 +482,7 @@ int get_pfn_sequential(int not_evict_pfn) {
                 }
             }
 
-            // 검사
+            // 검사 - 있으면 안됨 (오류)
             for (int i = 0; i < pfnum; i++) {
                 if (free_pf_list[i] != NULL && free_pf_list[i]->back_pfn == pfn_to_evict) {
                     // printf("  [OS] FETAL ERROR: This Page Table cannot be evicted, some Entry(offset: %d) is Present.\n", i);
@@ -602,7 +511,7 @@ int get_pfn_sequential(int not_evict_pfn) {
         unsigned short pt_pfn = free_pf_list[pfn_to_evict]->back_pfn;
 
         // Page Table 에서 pfn_to_evict를 가르키는 Page Entry 주소 검색
-        unsigned short *pt_entry = find_entry_by_pfn_addr(pt_pfn, pfn_to_evict);
+        unsigned short *pt_entry = find_entry_by_pfn(pt_pfn, pfn_to_evict);
         if (pt_entry == NULL) {
             // printf("  [OS] ERROR: Inverse Pointing Page Table is NULL (sfn: %hu).\n", pt_pfn);
             return -1;
