@@ -157,9 +157,9 @@ Process가 종료될 때 호출됨 혹은 Swap 시 not dirty page 버릴 때
     ```
     
     **if A. 이 Page Frame이 Page Table 이라면**
-    
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled.png)
-    
+   
+    <img width="500px" alt="Untitled" src="https://github.com/leehe228/OS_kumoo/assets/37548919/7236fe49-1735-4be4-9006-2d504facf764">
+ 
     ```c
     if (free_pf_list[pfn_to_evict]->type == 2) {
     		...
@@ -216,8 +216,8 @@ Process가 종료될 때 호출됨 혹은 Swap 시 not dirty page 버릴 때
     
     **if B. 이 Page Table이 일반 Page라면**
     
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled%201.png)
-    
+    <img width="500px" alt="Untitled 1" src="https://github.com/leehe228/OS_kumoo/assets/37548919/e6b96225-3947-4560-8d6a-a278ee72ab49">
+
     ```c
     else if (free_pf_list[pfn_to_evict]->type == 3) {
     		...
@@ -273,10 +273,10 @@ Process가 종료될 때 호출됨 혹은 Swap 시 not dirty page 버릴 때
 
 1. 각 케이스별 처리
     
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled%202.png)
-    
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled%203.png)
-    
+    <img width="500px" alt="Untitled 2" src="https://github.com/leehe228/OS_kumoo/assets/37548919/67ba54af-faca-49f4-8649-d84d0a436383">
+
+    <img width="500px" alt="Untitled 3" src="https://github.com/leehe228/OS_kumoo/assets/37548919/2a9e107e-6060-4aaa-a83a-7d39a779c2d7">
+
     **if A. Page Directory Entry → Page Table이 Swap Out된 경우**
     
     Page Table이 Swap Out되어 있다는 것은 해당 PT이 가르키는 모든 Page가 Swap Out
@@ -351,7 +351,7 @@ Process가 종료될 때 호출됨 혹은 Swap 시 not dirty page 버릴 때
     
     **if B-1) PT Entry → Page가 Swap Out된 경우**
     
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled%204.png)
+    <img width="500px" alt="Untitled 4" src="https://github.com/leehe228/OS_kumoo/assets/37548919/ac87a6b0-cdf0-41a6-9154-1678fda2c877">
     
     Page를 Swap In하고 PT Entry를 수정
     
@@ -379,7 +379,7 @@ Process가 종료될 때 호출됨 혹은 Swap 시 not dirty page 버릴 때
     
     **if B-2) PT Entry가 Invalidate (Page가 Mapping X)**
     
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled%205.png)
+    <img width="500px" alt="Untitled 5" src="https://github.com/leehe228/OS_kumoo/assets/37548919/57e28e54-b6db-461d-b65e-d4c02ae7708a">
     
     Page 새로 할당 후 0으로 초기화, PT Entry를 수정
     
@@ -403,7 +403,8 @@ Process가 종료될 때 호출됨 혹은 Swap 시 not dirty page 버릴 때
     
     **if C. Page Directory Entry가 Invalidate (Page Table Mapping X)**
     
-    ![Untitled](Assignment%20#1%20Kumoo%20418938d5a0344402a1b4ce10e43e9049/Untitled%206.png)
+   <img width="500px" alt="Untitled 6" src="https://github.com/leehe228/OS_kumoo/assets/37548919/e0bc4881-250e-4d8f-97ca-101595041df0">
+
     
     First Touch, PT, Page 모두 할당 필요
     
