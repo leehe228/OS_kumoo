@@ -9,7 +9,7 @@ gcc ./kumoo.c -o kumoo
 ```bash
 ./kumoo input.txt
 ```
-본 코드는 Ubuntu 22.04 Server에서 테스트하였습니다.
+본 코드는 Ubuntu 22.04 Server (x86-64) 에서 테스트하였습니다.
 <br>
 
 ---
