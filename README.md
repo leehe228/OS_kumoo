@@ -1,6 +1,22 @@
 # Assignment #1 Kumoo
 **Multi-Level Page Table (OS MMU 구현)**
 
+## How to run?
+```bash
+gcc ./kumoo.c -o kumoo
+```
+
+```bash
+./kumoo input.txt
+```
+본 코드는 Ubuntu 22.04 Server에서 테스트하였습니다.
+<br>
+
+---
+
+<br>
+
+# 설계 자료 (Design Specification)
 
 ## **1. 자료형**
 
